@@ -627,6 +627,68 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
 .route-example { max-width:400px; display:flex; align-items:center; gap:9px; padding:12px; border:1px solid #e6ece6; border-radius:5px; color:#718078; background:#fbfcfa; font-size:9px; }
 .route-example strong { color:#54816d; }
 .route-example code { color:#647a69; font-size:8px; }
+.agent-skill-summary { display:grid; gap:8px; margin-top:13px; padding:10px; border:1px solid #e6ece6; border-radius:5px; background:#fbfcfa; }
+.agent-skill-summary>div:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#8a968d; font-size:8px; }
+.agent-skill-summary>div:first-child strong { color:#52715d; font-size:9px; }
+.skill-chip-list,.context-skill-list { display:flex; flex-wrap:wrap; gap:5px; }
+.skill-chip { display:inline-flex; align-items:center; width:max-content; max-width:100%; padding:4px 6px; border:1px solid #e0e9e1; border-radius:4px; color:#62736a; background:#f5f8f4; font-size:8px; line-height:1.2; }
+.skill-chip.skill-green { border-color:#d5e6d8; color:#5a8464; background:#eff7ef; }
+.skill-chip.skill-lime { border-color:#e1e9c9; color:#7c8a55; background:#f7faeb; }
+.skill-chip.skill-blue { border-color:#d7e5ef; color:#5f7d9a; background:#f0f6fa; }
+.skill-chip.skill-cyan { border-color:#d2e8e5; color:#56858a; background:#edf8f7; }
+.skill-chip.skill-pink { border-color:#edd9e2; color:#9a6a81; background:#fcf1f6; }
+.skill-chip.skill-purple { border-color:#e1daed; color:#75658f; background:#f5f1fa; }
+.skill-chip.skill-indigo { border-color:#d9ddef; color:#65719a; background:#f1f3fb; }
+.skill-chip.skill-red { border-color:#efd8d5; color:#a56e67; background:#fdf1ef; }
+.skill-chip.skill-orange { border-color:#eedfc9; color:#a27b52; background:#fcf6ed; }
+.skill-chip.skill-coral { border-color:#efd8d2; color:#a46c61; background:#fdf2ee; }
+.skill-chip.skill-yellow { border-color:#eee1bd; color:#937a43; background:#fdf8e8; }
+.skill-chip.skill-teal { border-color:#d3e6df; color:#5d8477; background:#eff8f4; }
+.skill-chip.skill-slate { border-color:#dce3e3; color:#6c7d7d; background:#f3f7f7; }
+.skill-manage-button { padding:0; justify-self:start; font-size:8px; }
+.skills-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; align-items:start; }
+.skills-catalog,.skill-agent-rail { min-width:0; padding:16px; border:1px solid #e4eae4; border-radius:7px; background:#fff; }
+.skills-section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:13px; }
+.skills-section-head h2 { margin:5px 0 0; color:#3c4c42; font-size:15px; font-weight:700; }
+.skills-count { color:#91a097; font-size:9px; }
+.skill-catalog-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.skill-card { min-width:0; display:grid; gap:10px; padding:12px; border:1px solid #e7ece7; border-radius:6px; background:#fcfdfb; }
+.skill-card-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+.skill-card-heading>span:last-child { min-width:0; display:grid; gap:3px; }
+.skill-card-heading strong { overflow:hidden; color:#45564b; font-size:10px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.skill-card-heading small { color:#9aa49c; font-size:8px; }
+.skill-icon { width:25px; height:25px; display:grid; place-items:center; flex:0 0 auto; border-radius:6px; color:#68846e; background:#edf5ed; }
+.skill-icon.skill-blue { color:#6689aa; background:#edf5fb; }
+.skill-icon.skill-red { color:#a96963; background:#fcf0ee; }
+.skill-icon.skill-purple { color:#78699a; background:#f4effa; }
+.skill-icon.skill-coral { color:#ad7165; background:#fdf0ed; }
+.skill-icon.skill-yellow { color:#987c45; background:#fdf8e9; }
+.skill-card>p { min-height:34px; margin:0; color:#7c8980; font-size:9px; line-height:1.65; }
+.skill-meta { display:grid; gap:6px; padding-top:8px; border-top:1px solid #edf1ed; color:#8a958d; font-size:8px; line-height:1.5; }
+.skill-meta span { display:grid; gap:2px; }
+.skill-meta strong { color:#647369; font-size:8px; font-weight:700; }
+.skill-tools { display:flex; flex-wrap:wrap; gap:5px; }
+.skill-tools code { padding:3px 5px; border-radius:3px; color:#72847a; background:#eef3ee; font:8px 'DM Sans',monospace; }
+.skill-bindings { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:8px; border-top:1px solid #edf1ed; color:#96a098; font-size:8px; }
+.skill-bindings>div { display:flex; gap:3px; }
+.skill-agent-toggle { width:20px; height:20px; display:grid; place-items:center; padding:0; border:1px solid #e1e7e1; border-radius:50%; color:#9aa49c; background:#fff; font-size:7px; font-weight:700; cursor:pointer; }
+.skill-agent-toggle:hover { border-color:#a2c2a7; color:#5e8166; }
+.skill-agent-toggle-on { border-color:#a9c7ac; color:#52775b; background:#eaf5eb; }
+.skill-agent-rail { display:grid; gap:0; }
+.skill-agent-row { min-width:0; display:flex; align-items:center; gap:8px; padding:10px 0; border-top:1px solid #edf1ed; }
+.skill-agent-figure { width:35px; height:42px; display:grid; place-items:end center; flex:0 0 auto; overflow:visible; border-radius:5px; background:#f1f3ec; }
+.skill-agent-figure svg { width:100%; height:100%; overflow:visible; }
+.skill-agent-copy { min-width:0; display:grid; gap:3px; }
+.skill-agent-copy strong { color:#506056; font-size:9px; }
+.skill-agent-copy small { color:#99a39b; font-size:8px; }
+.skill-agent-copy>span { overflow:hidden; color:#809087; font-size:8px; line-height:1.45; text-overflow:ellipsis; white-space:nowrap; }
+.context-section { padding:11px; border:1px solid #e1ebe2; border-radius:5px; background:#f7fbf6; }
+.context-section .drawer-section-title { align-items:center; }
+.context-agent-label { display:inline-flex; align-items:center; gap:4px; color:#66856d; font-size:8px; }
+.context-note { margin-top:8px !important; color:#7c8e82 !important; font-size:9px !important; line-height:1.6 !important; }
+.context-skill-list { margin-top:9px; }
+.context-route { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; padding-top:8px; border-top:1px solid #e3ece3; color:#95a098; font-size:8px; }
+.context-route strong { overflow:hidden; color:#5f7766; font-size:8px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
 .setup-checklist { display:grid; gap:8px; color:#64806a; font-size:9px; }
 .setup-checklist span { display:flex; align-items:center; gap:7px; }
 .setup-checklist svg { color:#7ba17c; }
@@ -634,6 +696,9 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
   .agent-console { grid-template-columns:repeat(7,minmax(130px,1fr)); }
   .war-main-grid { grid-template-columns:minmax(0,1.5fr) minmax(260px,.8fr); }
   .team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .skills-layout { grid-template-columns:1fr; }
+  .skill-agent-rail { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px; }
+  .skill-agent-rail .skills-section-head { grid-column:1/-1; }
 }
 @media (max-width:900px) {
   .war-main-grid { grid-template-columns:1fr; }
@@ -660,6 +725,9 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
   .route-agent-card { padding:13px; }
   .route-controls { grid-template-columns:1fr 1fr; gap:8px; }
   .routing-notice { align-items:flex-start; }
+  .skill-catalog-grid { grid-template-columns:1fr; }
+  .skill-agent-rail { grid-template-columns:1fr; }
+  .skill-agent-rail .skills-section-head { grid-column:auto; }
 }
 
 .provider-settings { display:grid; grid-template-columns:220px minmax(0,1fr); overflow:hidden; border:1px solid #e4e9e4; border-radius:7px; background:#fff; }

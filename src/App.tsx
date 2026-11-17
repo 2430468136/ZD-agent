@@ -17,6 +17,7 @@ import {
   GitBranch,
   LayoutDashboard,
   ListChecks,
+  Library,
   Menu,
   MoreHorizontal,
   Network,
@@ -38,10 +39,11 @@ import {
 import type { ProviderId } from './provider-client'
 import ProviderSettings from './ProviderSettings'
 import AgentFigure from './AgentFigure'
+import { defaultSkillIds, getSkills, skillCatalog, type SkillProfile } from './skill-data'
 import './App.css'
 
 type Stage = 'research' | 'writing' | 'review' | 'approved'
-type Page = 'overview' | 'tasks' | 'team' | 'runs' | 'settings'
+type Page = 'overview' | 'tasks' | 'team' | 'skills' | 'runs' | 'settings'
 type ModelProvider = ProviderId
 
 type AgentProfile = {
@@ -52,6 +54,7 @@ type AgentProfile = {
   tone: string
   provider: ModelProvider
   model: string
+  skillIds: string[]
   status: string
   online: boolean
 }
@@ -159,13 +162,13 @@ const stageMeta: Record<Stage, { label: string; short: string; color: string }> 
 const stageOrder: Stage[] = ['research', 'writing', 'review', 'approved']
 
 const seedAgents: AgentProfile[] = [
-  { id: 'ceo', name: 'CEO Agent', role: '目标拆解 · 任务调度', initial: 'CEO', tone: 'agent-yellow', provider: 'OpenAI', model: 'gpt', status: '统筹中', online: true },
-  { id: 'frontend', name: '前端 Agent', role: 'React · UI · 浏览器交互', initial: '前', tone: 'agent-blue', provider: 'DeepSeek', model: 'deepseek-chat', status: '执行中', online: true },
-  { id: 'backend', name: '后端 Agent', role: 'API · 数据库 · 服务逻辑', initial: '后', tone: 'agent-lilac', provider: 'OpenAI', model: 'gpt', status: '执行中', online: true },
-  { id: 'qa', name: '测试 Agent', role: '测试用例 · 验收 · 回归', initial: '测', tone: 'agent-coral', provider: 'Anthropic', model: 'claude', status: '待验收', online: true },
-  { id: 'research', name: '研究 Agent', role: '资料检索 · 方案比较', initial: '研', tone: 'agent-cyan', provider: 'DeepSeek', model: 'deepseek-chat', status: '空闲', online: true },
-  { id: 'design', name: '设计 Agent', role: '交互结构 · 视觉规范', initial: '设', tone: 'agent-pink', provider: 'Anthropic', model: 'claude', status: '空闲', online: true },
-  { id: 'ops', name: '运营 Agent', role: '发布 · 监控 · 复盘', initial: '运', tone: 'agent-green', provider: 'OpenAI Compatible', model: 'model-id', status: '离线', online: false },
+  { id: 'ceo', name: 'CEO Agent', role: '目标拆解 · 任务调度', initial: 'CEO', tone: 'agent-yellow', provider: 'OpenAI', model: 'gpt', skillIds: defaultSkillIds.ceo, status: '统筹中', online: true },
+  { id: 'frontend', name: '前端 Agent', role: 'React · UI · 浏览器交互', initial: '前', tone: 'agent-blue', provider: 'DeepSeek', model: 'deepseek-chat', skillIds: defaultSkillIds.frontend, status: '执行中', online: true },
+  { id: 'backend', name: '后端 Agent', role: 'API · 数据库 · 服务逻辑', initial: '后', tone: 'agent-lilac', provider: 'OpenAI', model: 'gpt', skillIds: defaultSkillIds.backend, status: '执行中', online: true },
+  { id: 'qa', name: '测试 Agent', role: '测试用例 · 验收 · 回归', initial: '测', tone: 'agent-coral', provider: 'Anthropic', model: 'claude', skillIds: defaultSkillIds.qa, status: '待验收', online: true },
+  { id: 'research', name: '研究 Agent', role: '资料检索 · 方案比较', initial: '研', tone: 'agent-cyan', provider: 'DeepSeek', model: 'deepseek-chat', skillIds: defaultSkillIds.research, status: '空闲', online: true },
+  { id: 'design', name: '设计 Agent', role: '交互结构 · 视觉规范', initial: '设', tone: 'agent-pink', provider: 'Anthropic', model: 'claude', skillIds: defaultSkillIds.design, status: '空闲', online: true },
+  { id: 'ops', name: '运营 Agent', role: '发布 · 监控 · 复盘', initial: '运', tone: 'agent-green', provider: 'OpenAI Compatible', model: 'model-id', skillIds: defaultSkillIds.ops, status: '离线', online: false },
 ]
 
 function readStorage<T,>(key: string, fallback: T): T {
@@ -177,6 +180,11 @@ function readStorage<T,>(key: string, fallback: T): T {
   }
 }
 
+function readAgents() {
+  const saved = readStorage<AgentProfile[]>(agentKey, seedAgents)
+  return saved.map((agent) => ({ ...agent, skillIds: agent.skillIds ?? defaultSkillIds[agent.id] ?? [] }))
+}
+
 function timeLabel() {
   return new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
 }
@@ -184,7 +192,7 @@ function timeLabel() {
 function App() {
   const [tasks, setTasks] = useState<Task[]>(() => readStorage(taskKey, seedTasks))
   const [runs, setRuns] = useState<RunLog[]>(() => readStorage(logKey, seedRuns))
-  const [agents, setAgents] = useState<AgentProfile[]>(() => readStorage(agentKey, seedAgents))
+  const [agents, setAgents] = useState<AgentProfile[]>(readAgents)
   const [page, setPage] = useState<Page>('overview')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -280,6 +288,7 @@ function App() {
           <NavItem icon={<LayoutDashboard size={18} />} label="作战大屏" active={page === 'overview'} onClick={() => navigate('overview')} />
           <NavItem icon={<Workflow size={18} />} label="任务流水线" count={activeTasks.length} active={page === 'tasks'} onClick={() => navigate('tasks')} />
           <NavItem icon={<UsersRound size={18} />} label="Agent 团队" active={page === 'team'} onClick={() => navigate('team')} />
+          <NavItem icon={<Library size={18} />} label="Skills 库" active={page === 'skills'} onClick={() => navigate('skills')} />
           <NavItem icon={<ListChecks size={18} />} label="执行记录" active={page === 'runs'} onClick={() => navigate('runs')} />
         </nav>
         <div className="nav-label nav-label-spaced">偏好设置</div>
@@ -315,7 +324,8 @@ function App() {
         <div className="page-content">
           {page === 'overview' && <WarRoom tasks={tasks} runs={runs} reviewTasks={reviewTasks} agents={agents} paused={dispatchPaused} onTogglePaused={() => setDispatchPaused((value) => !value)} onCreate={() => setCreateOpen(true)} onSelect={setSelectedTaskId} onNavigate={navigate} />}
           {page === 'tasks' && <TasksPage tasks={filteredTasks} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch} onCreate={() => setCreateOpen(true)} onSelect={setSelectedTaskId} />}
-          {page === 'team' && <TeamPage tasks={tasks} agents={agents} onUpdateAgent={updateAgent} onToast={setToast} />}
+          {page === 'team' && <TeamPage tasks={tasks} agents={agents} onUpdateAgent={updateAgent} onToast={setToast} onOpenSkills={() => navigate('skills')} />}
+          {page === 'skills' && <SkillsPage agents={agents} onUpdateAgent={updateAgent} onToast={setToast} />}
           {page === 'runs' && <RunsPage runs={runs} />}
           {page === 'settings' && <ProviderSettings agents={agents} onNavigate={navigate} />}
           <footer className="page-footer"><span>织点 AI 工作团队</span><span><ShieldCheck size={13} /> 任务数据保存在浏览器，API Key 由本地服务加密保存</span></footer>
@@ -323,7 +333,7 @@ function App() {
       </main>
 
       {mobileNavOpen && <button className="mobile-scrim" aria-label="关闭导航" onClick={() => setMobileNavOpen(false)} />}
-      {selectedTask && <TaskDrawer task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateStage} />}
+      {selectedTask && <TaskDrawer task={selectedTask} agents={agents} onClose={() => setSelectedTaskId(null)} onUpdate={updateStage} />}
       {createOpen && <CreateModal onClose={() => setCreateOpen(false)} onCreate={createTask} />}
       {toast && <div className="toast"><CircleCheck size={17} />{toast}</div>}
     </div>
@@ -331,7 +341,7 @@ function App() {
 }
 
 function pageLabel(page: Page) {
-  return ({ overview: '作战大屏', tasks: '任务流水线', team: 'Agent 团队', runs: '执行记录', settings: '模型接入' })[page]
+  return ({ overview: '作战大屏', tasks: '任务流水线', team: 'Agent 团队', skills: 'Skills 库', runs: '执行记录', settings: '模型接入' })[page]
 }
 
 function NavItem({ icon, label, active, count, onClick }: { icon: React.ReactNode; label: string; active: boolean; count?: number; onClick: () => void }) {
@@ -414,15 +424,31 @@ function PipelineRow({ task, onClick }: { task: Task; onClick: () => void }) {
   return <button className="pipeline-row" onClick={onClick}><span className="pipeline-title"><span className={`pipeline-marker marker-${stageMeta[task.stage].color}`} /><span><strong>{task.title}</strong><small>{task.kind} <i /> {task.channel}</small></span></span><span className="pipeline-owner"><span className="owner-avatar owner-small">{task.ownerInitial}</span>{task.owner}</span><span className="pipeline-progress"><span className="progress-track"><i style={{ width: `${task.progress}%` }} /></span><small>{task.progress}%</small></span><span className="pipeline-due">{task.due}</span><ChevronRight size={16} className="pipeline-chevron" /></button>
 }
 
-function TeamPage({ tasks, agents, onUpdateAgent, onToast }: { tasks: Task[]; agents: AgentProfile[]; onUpdateAgent: (id: string, patch: Partial<AgentProfile>) => void; onToast: (message: string) => void }) {
+function TeamPage({ tasks, agents, onUpdateAgent, onToast, onOpenSkills }: { tasks: Task[]; agents: AgentProfile[]; onUpdateAgent: (id: string, patch: Partial<AgentProfile>) => void; onToast: (message: string) => void; onOpenSkills: () => void }) {
   return <>
     <div className="page-heading inner-heading"><div><div className="eyebrow"><span className="eyebrow-dot" />TEAM & MODEL ROUTING</div><h1>Agent 团队</h1><p>按岗位配置不同模型：CEO、前端、后端和测试可以各走各的服务商。</p></div><div className="team-status-pill"><span className="demo-pulse" />{agents.filter((agent) => agent.online).length} 个 Agent 在线</div></div>
-    <div className="routing-notice"><Cpu size={15} /><span><strong>模型路由草稿</strong> 当前只保存岗位到服务商 / model ID 的映射，尚未配置 API Key，也不会发起真实模型调用。</span></div>
+    <div className="routing-notice"><Cpu size={15} /><span><strong>模型与 Skills 路由</strong> 每个岗位都有独立模型和技能上下文。当前任务只会选择与岗位相关的 Skills，不会把整套技能库全部塞进提示词。</span></div>
     <div className="team-grid">{agents.map((agent) => {
       const assigned = tasks.filter((task) => task.owner === agent.name && task.stage !== 'approved')
-      return <article className="team-card route-agent-card" key={agent.id}><div className="team-card-top"><span className={`team-character ${agent.tone}`}><AgentFigure agentId={agent.id} /><i className={agent.online ? 'online' : ''} /></span><span className={`agent-online-label ${agent.online ? 'state-online' : ''}`}><i />{agent.online ? '在线' : '离线'}</span></div><div className="team-role">{agent.role}</div><h2>{agent.name}</h2><div className="route-controls"><label>模型服务商<select aria-label={`${agent.name} 服务商`} value={agent.provider} onChange={(event) => { const provider = event.target.value as ModelProvider; onUpdateAgent(agent.id, { provider }); onToast(`${agent.name} 已切换为 ${provider}`) }}><option value="OpenAI">OpenAI</option><option value="Anthropic">Anthropic / Claude</option><option value="DeepSeek">DeepSeek</option><option value="OpenAI Compatible">OpenAI Compatible</option><option value="Local">本地模型</option></select></label><label>Model ID<input aria-label={`${agent.name} Model ID`} value={agent.model} placeholder="填写服务商要求的 model ID" onChange={(event) => onUpdateAgent(agent.id, { model: event.target.value })} onBlur={() => onToast(`${agent.name} 的模型路由已保存`)} /></label></div><div className="team-card-divider" /><div className="team-card-foot"><span><strong>{assigned.length}</strong> 个进行中任务</span><span>{agent.provider}</span></div></article>
+      const skills = getSkills(agent.skillIds)
+      return <article className="team-card route-agent-card" key={agent.id}><div className="team-card-top"><span className={`team-character ${agent.tone}`}><AgentFigure agentId={agent.id} /><i className={agent.online ? 'online' : ''} /></span><span className={`agent-online-label ${agent.online ? 'state-online' : ''}`}><i />{agent.online ? '在线' : '离线'}</span></div><div className="team-role">{agent.role}</div><h2>{agent.name}</h2><div className="route-controls"><label>模型服务商<select aria-label={`${agent.name} 服务商`} value={agent.provider} onChange={(event) => { const provider = event.target.value as ModelProvider; onUpdateAgent(agent.id, { provider }); onToast(`${agent.name} 已切换为 ${provider}`) }}><option value="OpenAI">OpenAI</option><option value="Anthropic">Anthropic / Claude</option><option value="DeepSeek">DeepSeek</option><option value="OpenAI Compatible">OpenAI Compatible</option><option value="Local">本地模型</option></select></label><label>Model ID<input aria-label={`${agent.name} Model ID`} value={agent.model} placeholder="填写服务商要求的 model ID" onChange={(event) => onUpdateAgent(agent.id, { model: event.target.value })} onBlur={() => onToast(`${agent.name} 的模型路由已保存`)} /></label></div><div className="agent-skill-summary"><div><span>已绑定 Skills</span><strong>{skills.length} 项</strong></div><div className="skill-chip-list">{skills.map((skill) => <span className={`skill-chip ${skill.tone}`} key={skill.id}>{skill.name}</span>)}</div><button className="text-button skill-manage-button" onClick={onOpenSkills}><Library size={13} />去 Skills 库管理<ArrowRight size={13} /></button></div><div className="team-card-divider" /><div className="team-card-foot"><span><strong>{assigned.length}</strong> 个进行中任务</span><span>{agent.provider}</span></div></article>
     })}</div>
     <section className="team-workflow"><div><span className="section-kicker">HANDOFF RULES <span className="kicker-line" /></span><h2>任务交接</h2><p>CEO 负责拆解与派单，专业岗位执行，测试 Agent 检查后由你验收。</p></div><div className="handoff-flow">{['CEO Agent', '专业 Agent', '测试 Agent', '你验收'].map((item, index) => <div className="handoff-node" key={item}><span className={`handoff-icon handoff-${index}`}>{index === 0 ? <Bot size={17} /> : index === 3 ? <ShieldCheck size={17} /> : index === 2 ? <CheckCheck size={17} /> : <Cpu size={17} />}</span><strong>{item}</strong>{index < 3 && <ArrowRight size={15} />}</div>)}</div></section>
+  </>
+}
+
+function SkillsPage({ agents, onUpdateAgent, onToast }: { agents: AgentProfile[]; onUpdateAgent: (id: string, patch: Partial<AgentProfile>) => void; onToast: (message: string) => void }) {
+  const skillUsage = (skillId: string) => agents.filter((agent) => agent.skillIds.includes(skillId))
+  function toggleSkill(agent: AgentProfile, skill: SkillProfile) {
+    const hasSkill = agent.skillIds.includes(skill.id)
+    const skillIds = hasSkill ? agent.skillIds.filter((id) => id !== skill.id) : [...agent.skillIds, skill.id]
+    onUpdateAgent(agent.id, { skillIds })
+    onToast(`${agent.name} 已${hasSkill ? '移除' : '绑定'}「${skill.name}」`)
+  }
+  return <>
+    <div className="page-heading inner-heading"><div><div className="eyebrow"><span className="eyebrow-dot" />SKILL LIBRARY & CONTEXT</div><h1>Skills 库</h1><p>把验证过的工作手册绑定到具体岗位，执行时按任务相关性选择上下文。</p></div><div className="team-status-pill"><Library size={15} />{skillCatalog.length} 个可用 Skills</div></div>
+    <div className="routing-notice"><Library size={15} /><span><strong>技能绑定是岗位级配置</strong> 技能说明、工具权限和验证步骤会随 Agent 一起进入执行上下文；绑定关系保存在当前浏览器中。</span></div>
+    <div className="skills-layout"><section className="skills-catalog"><div className="skills-section-head"><div><span className="section-kicker">CATALOG <span className="kicker-line" /></span><h2>可用 Skills</h2></div><span className="skills-count">{skillCatalog.length} 项</span></div><div className="skill-catalog-grid">{skillCatalog.map((skill) => <article className="skill-card" key={skill.id}><div className="skill-card-heading"><span className={`skill-icon ${skill.tone}`}><Sparkles size={14} /></span><span><strong>{skill.name}</strong><small>{skill.category}</small></span></div><p>{skill.description}</p><div className="skill-meta"><span><strong>适用范围</strong>{skill.scope}</span><span><strong>验证方式</strong>{skill.verification}</span></div><div className="skill-tools">{skill.tools.map((tool) => <code key={tool}>{tool}</code>)}</div><div className="skill-bindings"><span>已绑定 {skillUsage(skill.id).length} 个 Agent</span><div>{agents.map((agent) => { const bound = agent.skillIds.includes(skill.id); return <button className={`skill-agent-toggle ${bound ? 'skill-agent-toggle-on' : ''}`} key={agent.id} aria-pressed={bound} title={`${bound ? '取消' : '绑定'} ${agent.name}`} onClick={() => toggleSkill(agent, skill)}>{agent.initial}</button> })}</div></div></article>)}</div></section><aside className="skill-agent-rail"><div className="skills-section-head"><div><span className="section-kicker">BY AGENT <span className="kicker-line" /></span><h2>岗位技能矩阵</h2></div></div>{agents.map((agent) => { const skills = getSkills(agent.skillIds); return <div className="skill-agent-row" key={agent.id}><span className={`skill-agent-figure ${agent.tone}`}><AgentFigure agentId={agent.id} /></span><span className="skill-agent-copy"><strong>{agent.name}</strong><small>{agent.provider} · {agent.model}</small><span>{skills.length} 项技能 · {skills.map((skill) => skill.name).join('、')}</span></span></div> })}</aside></div>
   </>
 }
 
@@ -438,9 +464,11 @@ function EmptyState({ title, text, onClick }: { title: string; text: string; onC
   return <div className="empty-state"><span><Sparkles size={17} /></span><strong>{title}</strong><small>{text}</small>{onClick && <button className="text-button" onClick={onClick}>创建任务 <ArrowRight size={14} /></button>}</div>
 }
 
-function TaskDrawer({ task, onClose, onUpdate }: { task: Task; onClose: () => void; onUpdate: (task: Task, stage: Stage, message: string, agent?: string) => void }) {
+function TaskDrawer({ task, agents, onClose, onUpdate }: { task: Task; agents: AgentProfile[]; onClose: () => void; onUpdate: (task: Task, stage: Stage, message: string, agent?: string) => void }) {
   const nextStage = task.stage === 'research' ? 'writing' : task.stage === 'writing' ? 'review' : null
   const executionAgent = /后端|api|数据库|服务/i.test(`${task.title} ${task.kind} ${task.channel}`) ? '后端 Agent' : '前端 Agent'
+  const activeAgent = agents.find((agent) => agent.name === (task.stage === 'research' ? 'CEO Agent' : task.stage === 'review' ? '测试 Agent' : executionAgent)) ?? agents[0]
+  const contextSkills = getSkills(activeAgent?.skillIds ?? [])
   return <div className="drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <aside className="task-drawer" aria-label="任务详情">
       <div className="drawer-top"><span className="drawer-kicker"><FileText size={15} />任务详情</span><button className="icon-button" aria-label="关闭详情" onClick={onClose}><X size={19} /></button></div>
@@ -448,6 +476,7 @@ function TaskDrawer({ task, onClose, onUpdate }: { task: Task; onClose: () => vo
         <div className="drawer-progress"><div><span>任务进度</span><strong>{task.progress}%</strong></div><span className="progress-track"><i style={{ width: `${task.progress}%` }} /></span></div>
         <section className="drawer-section"><div className="drawer-section-title"><h3>任务说明</h3><button className="icon-button subtle-icon" aria-label="更多任务选项"><MoreHorizontal size={17} /></button></div><p>{task.brief}</p></section>
         <section className="drawer-section"><div className="drawer-section-title"><h3>交付概览</h3><span className="source-count"><FileText size={14} />{task.sources} 个附件</span></div><div className="output-preview"><div className="output-preview-icon"><FileText size={17} /></div><span><strong>{task.stage === 'review' || task.stage === 'approved' ? '任务交付物' : task.stage === 'writing' ? '执行产物' : '任务计划'}</strong><small>{task.stage === 'review' ? '已完成 · 等待人工验收' : task.stage === 'approved' ? '已通过验收并交付' : `当前阶段 · ${stageMeta[task.stage].label}`}</small></span><ArrowUpRight size={15} /></div></section>
+        <section className="drawer-section context-section"><div className="drawer-section-title"><h3>本次执行上下文</h3><span className="context-agent-label"><Cpu size={13} />{activeAgent?.name}</span></div><p className="context-note">只选择当前岗位绑定的 Skills，后续执行器会据此组装提示词和工具权限。</p><div className="context-skill-list">{contextSkills.map((skill) => <span className={`skill-chip ${skill.tone}`} key={skill.id}>{skill.name}</span>)}</div><div className="context-route"><span>模型路由</span><strong>{activeAgent?.provider} / {activeAgent?.model}</strong></div></section>
         <section className="drawer-section drawer-timeline"><h3>任务进展</h3>{stageOrder.map((stage, index) => { const reached = stageOrder.indexOf(task.stage) >= index; return <div className={`timeline-row ${reached ? 'timeline-reached' : ''}`} key={stage}><span className="timeline-node">{reached ? <Check size={11} /> : <span />}</span><span><strong>{stageMeta[stage].label}</strong><small>{stage === task.stage ? task.updated : reached ? '已完成' : '待开始'}</small></span>{index < 3 && <i className={reached ? 'timeline-line reached-line' : 'timeline-line'} />}</div>})}</section>
       </div>
       <div className="drawer-actions">
