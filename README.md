@@ -11,8 +11,9 @@
 - 模型接入页可以为 OpenAI、Anthropic、DeepSeek、兼容 OpenAI 接口或本地模型配置 API 地址和 API Key。
 - API Key 不写入浏览器 `localStorage`；本地 API 服务通过 Windows DPAPI 按当前用户加密保存，并只向界面返回掩码状态。
 - 连接测试会向选定服务商发送一次短请求，帮助确认地址、凭据和 Model ID 是否可用。
-- 任务可以在待拆解、执行中、待验收和已交付状态间演示推进。
-- Agent 路由、任务和执行记录保存在当前浏览器的 `localStorage`。
+- 真实任务使用 `Project / Session / Task / Run / Review` 数据模型，服务端持久化项目授权、会话、任务、运行与验收记录。
+- 后台队列按 CEO 规划 → 专业 Agent 执行 → 测试 Agent 独立验收推进，并通过 SSE 推送运行事件。
+- 每个岗位的模型与 Skills 独立注入；失败阶段可从任务详情重试，旧的演示任务仍可用于界面预览。
 
 ## 本地运行
 
@@ -49,4 +50,4 @@ React、TypeScript、Vite、Lucide。
 
 ## GitHub 发布
 
-项目已包含 `.github/workflows/ci.yml`，每次推送和 Pull Request 会自动运行 `pnpm lint` 与 `pnpm build`。API Key、Windows 本地配置和构建产物已加入 `.gitignore`，不要强制添加这些文件。
+项目已包含 `.github/workflows/ci.yml`，每次推送和 Pull Request 会自动运行 `pnpm lint`、`pnpm build` 和本地 mock 驱动的 `pnpm test:e2e`。API Key、Windows 本地配置和构建产物已加入 `.gitignore`，不要强制添加这些文件。
