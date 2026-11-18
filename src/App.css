@@ -303,6 +303,20 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
 .drawer-advance { width:100%; }
 .completed-banner { width:100%; display:flex; align-items:center; justify-content:center; gap:7px; padding:10px; border-radius:5px; color:#62816a; background:#f0f6ee; font-size:10px; font-weight:600; }
 .drawer-demo-note { width:100%; color:#a5ada7; font-size:8px; text-align:center; }
+.workflow-evidence { border:1px solid #dfe8e0; border-radius:6px; padding:12px; background:#fbfdfb; }
+.workflow-evidence-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.workflow-evidence-grid>div { min-width:0; display:grid; gap:3px; padding:8px; border:1px solid #e8eee8; border-radius:5px; background:#fff; }
+.workflow-evidence-grid span,.workflow-result-block>span { color:#9aa69e; font-size:8px; }
+.workflow-evidence-grid strong { overflow:hidden; color:#42554a; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.workflow-result-block { margin-top:9px; }
+.workflow-result-block pre { max-height:170px; overflow:auto; margin:5px 0 0; padding:8px; border-radius:5px; color:#607168; background:#f1f5f1; font:8px/1.55 'Cascadia Code','Consolas',monospace; white-space:pre-wrap; word-break:break-word; }
+.workflow-review { display:grid; gap:4px; margin-top:9px; padding:9px; border:1px solid #dce8de; border-radius:5px; color:#4f6255; background:#f2faf3; font-size:9px; }
+.workflow-review span { color:#7d8d82; line-height:1.5; }
+.workflow-review.review-fail { border-color:#efd6cd; color:#995e4c; background:#fff7f3; }
+.workflow-status-note { display:flex; align-items:flex-start; gap:8px; padding:10px; border:1px solid #dfe8e0; border-radius:5px; color:#587060; background:#f6faf6; font-size:9px; line-height:1.55; }
+.workflow-status-note>span:last-child,.workflow-status-note>span:first-child:not(.demo-pulse) { flex:1; }
+.workflow-status-note.is-error { display:grid; gap:4px; border-color:#efd6cd; color:#995e4c; background:#fff7f3; }
+.workflow-status-note.is-error span { color:#876e64; }
 .modal-backdrop { z-index:70; align-items:center; justify-content:center; padding:20px; }
 .create-modal { width:min(475px,100%); padding:22px; border:1px solid #ffffffcc; border-radius:9px; background:#fff; box-shadow:0 22px 75px #14251d38; animation:modal-up .2s ease-out; }
 .modal-heading { display:flex; align-items:center; justify-content:space-between; }
@@ -318,6 +332,8 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
 .form-label textarea { min-height:85px; padding:9px 10px; resize:vertical; line-height:1.7; }
 .form-label input::placeholder,.form-label textarea::placeholder { color:#b2bbb4; }
 .form-label input:focus,.form-label textarea:focus,.form-label select:focus { border-color:#9dbba2; box-shadow:0 0 0 3px #5b947914; }
+.form-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:10px; }
+.form-grid .form-label { min-width:0; }
 .modal-flow-note { min-height:38px; display:flex; align-items:center; gap:8px; margin-top:16px; padding:0 10px; border:1px solid #e9efe6; border-radius:5px; color:#79877d; background:#f8faf6; font-size:9px; }
 .modal-flow-note strong { color:#52705a; font-weight:600; }
 .flow-note-arrow { display:inline-flex; align-items:center; gap:5px; margin-left:auto; color:#a1aaa3; font-size:8px; }
@@ -434,6 +450,8 @@ kbd { min-height:20px; display:inline-flex; align-items:center; gap:2px; padding
   .drawer-top { padding-inline:16px; }
   .drawer-actions { padding-inline:15px; }
   .create-modal { padding:17px; }
+  .form-grid { grid-template-columns:1fr; gap:0; }
+  .workflow-evidence-grid { grid-template-columns:1fr; }
   .modal-flow-note { flex-wrap:wrap; padding-block:8px; }
   .flow-note-arrow { width:100%; margin-left:15px; }
   .mobile-scrim { position:fixed; z-index:65; inset:0; border:0; background:#0d1b1559; }

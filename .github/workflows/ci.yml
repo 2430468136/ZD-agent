@@ -26,3 +26,5 @@ jobs:
         run: pnpm lint
       - name: Build
         run: pnpm build
+      - name: End-to-end workflow
+        run: pnpm test:e2e

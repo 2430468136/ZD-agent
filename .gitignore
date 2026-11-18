@@ -34,3 +34,6 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Local end-to-end test fixtures
+.e2e-*/

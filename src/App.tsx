@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   ArrowDownRight,
@@ -36,6 +36,18 @@ import {
   Workflow,
   X,
 } from 'lucide-react'
+import {
+  loadWorkflow,
+  registerProject,
+  startWorkflow,
+  retryWorkflowPhase,
+  subscribeWorkflowRun,
+  type ProjectAccessMode,
+  type WorkflowAgentConfig,
+  type WorkflowEvent,
+  type WorkflowSnapshot,
+  type WorkflowTask,
+} from './provider-client'
 import type { ProviderId } from './provider-client'
 import ProviderSettings from './ProviderSettings'
 import AgentFigure from './AgentFigure'
@@ -72,6 +84,9 @@ type Task = {
   due: string
   progress: number
   sources: number
+  workflowTaskId?: string
+  workflowStatus?: string
+  projectPath?: string
 }
 
 type RunLog = {
@@ -193,6 +208,7 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>(() => readStorage(taskKey, seedTasks))
   const [runs, setRuns] = useState<RunLog[]>(() => readStorage(logKey, seedRuns))
   const [agents, setAgents] = useState<AgentProfile[]>(readAgents)
+  const [workflow, setWorkflow] = useState<WorkflowSnapshot | null>(null)
   const [page, setPage] = useState<Page>('overview')
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -201,6 +217,9 @@ function App() {
   const [toast, setToast] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [dispatchPaused, setDispatchPaused] = useState(false)
+  const [workflowBusy, setWorkflowBusy] = useState(false)
+  const subscriptions = useRef(new Map<string, () => void>())
+  const watchRunRef = useRef<(runId: string) => void>(() => undefined)
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null
   const reviewTasks = tasks.filter((task) => task.stage === 'review')
   const activeTasks = tasks.filter((task) => task.stage !== 'approved')
@@ -217,6 +236,23 @@ function App() {
   useEffect(() => window.localStorage.setItem(logKey, JSON.stringify(runs)), [runs])
   useEffect(() => window.localStorage.setItem(agentKey, JSON.stringify(agents)), [agents])
   useEffect(() => {
+    let disposed = false
+    loadWorkflow().then((snapshot) => {
+      if (!disposed) {
+        setWorkflow(snapshot)
+        mergeWorkflowTasks(snapshot)
+        snapshot.runs.filter((run) => run.status === 'queued' || run.status === 'running').forEach((run) => watchRunRef.current(run.id))
+      }
+    }).catch(() => {
+      // The UI remains usable in local demo mode when the API is not running.
+    })
+    return () => { disposed = true }
+  }, [])
+  useEffect(() => () => {
+    subscriptions.current.forEach((unsubscribe) => unsubscribe())
+    subscriptions.current.clear()
+  }, [])
+  useEffect(() => {
     if (!toast) return
     const timer = window.setTimeout(() => setToast(''), 3000)
     return () => window.clearTimeout(timer)
@@ -225,6 +261,66 @@ function App() {
   function addRun(task: Task, agent: string, action: string) {
     setRuns((current) => [{ id: `r-${Date.now()}`, taskTitle: task.title, agent, action, time: '刚刚' }, ...current])
   }
+
+  function workflowStage(status: string): { stage: Stage; owner: string; progress: number } {
+    if (status === 'approved') return { stage: 'approved', owner: '林同学', progress: 100 }
+    if (status === 'reviewing' || status === 'executed') return { stage: 'review', owner: '测试 Agent', progress: 88 }
+    if (status === 'executing') return { stage: 'writing', owner: '专业 Agent', progress: 62 }
+    if (status === 'needs-fix' || status === 'failed') return { stage: 'writing', owner: '专业 Agent', progress: 48 }
+    if (status === 'planned') return { stage: 'writing', owner: '专业 Agent', progress: 36 }
+    return { stage: 'research', owner: 'CEO Agent', progress: 16 }
+  }
+
+  function mergeWorkflowTasks(snapshot: WorkflowSnapshot) {
+    setTasks((current) => {
+      const knownWorkflowIds = new Set(current.map((task) => task.workflowTaskId).filter((id): id is string => Boolean(id)))
+      const restored = snapshot.tasks.filter((remote) => !knownWorkflowIds.has(remote.id)).map((remote) => {
+        const state = workflowStage(remote.status)
+        const ownerInitial = state.owner === 'CEO Agent' ? 'CEO' : state.owner === '测试 Agent' ? '测' : state.owner === '林同学' ? '林' : state.owner === '后端 Agent' ? '后' : '前'
+        const session = snapshot.sessions.find((item) => item.id === remote.sessionId)
+        const project = session ? snapshot.projects.find((item) => item.id === session.projectId) : undefined
+        return { id: 'restored-' + remote.id, workflowTaskId: remote.id, workflowStatus: remote.status, projectPath: project?.path, title: remote.title, brief: remote.brief, stage: state.stage, owner: state.owner, ownerInitial, channel: '本地 Agent 工作流', kind: remote.executionMode, updated: new Date(remote.updatedAt).toLocaleString(), due: '历史运行', progress: state.progress, sources: remote.execution?.writtenFiles?.length ?? 0 }
+      })
+      const updated = current.map((task) => {
+        const remote = snapshot.tasks.find((item) => item.id === task.workflowTaskId)
+        if (!remote) return task
+        const state = workflowStage(remote.status)
+        const ownerInitial = state.owner === 'CEO Agent' ? 'CEO' : state.owner === '测试 Agent' ? '测' : state.owner === '林同学' ? '林' : state.owner === '后端 Agent' ? '后' : '前'
+        const session = snapshot.sessions.find((item) => item.id === remote.sessionId)
+        const project = session ? snapshot.projects.find((item) => item.id === session.projectId) : undefined
+        return { ...task, stage: state.stage, owner: state.owner, ownerInitial, progress: state.progress, updated: '刚刚', workflowStatus: remote.status, projectPath: task.projectPath ?? project?.path, sources: remote.execution?.writtenFiles?.length ?? task.sources }
+      })
+      return [...restored, ...updated]
+    })
+  }
+
+  function recordWorkflowRun(runId: string, event: WorkflowEvent) {
+    if (event.type === 'run.snapshot' && event.run) {
+      setWorkflow((current) => current ? { ...current, runs: [...current.runs.filter((run) => run.id !== runId), event.run!] } : current)
+      return
+    }
+    const run = workflow?.runs.find((item) => item.id === runId)
+    if (event.message && run) addRun({ id: run.taskId, title: run.taskTitle, brief: '', stage: 'research', owner: run.agentName, ownerInitial: run.agentName.slice(0, 1), channel: '本地工作流', kind: run.phase, updated: '刚刚', due: '执行中', progress: 20, sources: 0 }, run.agentName, event.message)
+  }
+
+  function watchRun(runId: string) {
+    if (subscriptions.current.has(runId)) return
+    const unsubscribe = subscribeWorkflowRun(runId, (event) => {
+      recordWorkflowRun(runId, event)
+      if (event.nextRunId) watchRun(event.nextRunId)
+      loadWorkflow().then((snapshot) => {
+        setWorkflow(snapshot)
+        mergeWorkflowTasks(snapshot)
+        snapshot.runs.filter((run) => run.status === 'queued' || run.status === 'running').forEach((run) => watchRun(run.id))
+      }).catch(() => undefined)
+      if (event.type === 'run.completed' || event.type === 'run.failed') {
+        subscriptions.current.get(runId)?.()
+        subscriptions.current.delete(runId)
+      }
+    })
+    subscriptions.current.set(runId, unsubscribe)
+  }
+  watchRunRef.current = watchRun
 
   function updateStage(task: Task, stage: Stage, message: string, agent = task.owner) {
     const isBackend = /后端|api|数据库|服务/i.test(`${task.title} ${task.kind} ${task.channel}`)
@@ -240,7 +336,35 @@ function App() {
     setAgents((current) => current.map((agent) => agent.id === id ? { ...agent, ...patch } : agent))
   }
 
-  function createTask(title: string, brief: string, channel: string) {
+  async function retryWorkflowTask(task: WorkflowTask) {
+    if (workflowBusy) return
+    const recentRuns = workflow?.runs.filter((run) => run.taskId === task.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)) ?? []
+    const failedPhase = recentRuns.find((run) => run.status === 'failed')?.phase
+    const phase = failedPhase === 'ceo-plan' ? 'plan' : 'execute'
+    const key = phase === 'plan' ? 'ceo' : 'specialist'
+    const agent = task.agents?.[key]
+    if (!agent) {
+      setToast(phase === 'plan' ? '找不到 CEO Agent 配置，无法重新拆解。' : '找不到专业 Agent 配置，无法重新执行。')
+      return
+    }
+    setWorkflowBusy(true)
+    try {
+      const result = await retryWorkflowPhase(task.id, phase, agent)
+      watchRun(result.run.id)
+      const snapshot = await loadWorkflow()
+      setWorkflow(snapshot)
+      mergeWorkflowTasks(snapshot)
+      setToast(phase === 'plan' ? 'CEO Agent 正在重新拆解任务' : '专业 Agent 正在重新执行任务')
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : '无法重试工作流阶段')
+    } finally {
+      setWorkflowBusy(false)
+    }
+  }
+
+  async function createTask(title: string, brief: string, channel: string, projectPath: string, accessMode: ProjectAccessMode, allowedCommands: string[]) {
+    if (workflowBusy) return
+    setWorkflowBusy(true)
     const task: Task = {
       id: `t-${Date.now()}`,
       title,
@@ -255,12 +379,26 @@ function App() {
       progress: 12,
       sources: 0,
     }
-    setTasks((current) => [task, ...current])
-    addRun(task, 'CEO Agent', '拆解目标并加入待分派队列')
-    setCreateOpen(false)
-    setPage('tasks')
-    setFilter('all')
-    setToast('任务已交给 CEO Agent 拆解')
+    try {
+      const project = await registerProject({ path: projectPath, accessMode, allowedCommands })
+      const toAgent = (agent: AgentProfile): WorkflowAgentConfig => ({ name: agent.name, provider: agent.provider, model: agent.model, skills: getSkills(agent.skillIds) })
+      const ceo = agents.find((agent) => agent.id === 'ceo') ?? agents[0]
+      const specialist = /后端|api|数据库|服务/i.test(`${title} ${channel} ${brief}`) ? agents.find((agent) => agent.id === 'backend') : agents.find((agent) => agent.id === 'frontend')
+      const qa = agents.find((agent) => agent.id === 'qa') ?? agents[0]
+      const result = await startWorkflow({ projectId: project.id, title, brief, agents: { ceo: toAgent(ceo), specialist: toAgent(specialist ?? agents[0]), qa: toAgent(qa) } })
+      const linkedTask = { ...task, workflowTaskId: result.task.id, projectPath, workflowStatus: result.task.status }
+      setTasks((current) => [linkedTask, ...current])
+      addRun(linkedTask, 'CEO Agent', '已进入真实本地工作流队列')
+      watchRun(result.run.id)
+      setCreateOpen(false)
+      setPage('tasks')
+      setFilter('all')
+      setToast('任务已交给 CEO Agent 拆解，正在实时执行')
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : '无法启动真实工作流')
+    } finally {
+      setWorkflowBusy(false)
+    }
   }
 
   function navigate(next: Page) {
@@ -296,7 +434,7 @@ function App() {
           <NavItem icon={<Settings2 size={18} />} label="模型接入" active={page === 'settings'} onClick={() => navigate('settings')} />
         </nav>
         <div className="sidebar-bottom">
-          <div className="demo-note"><span className="demo-pulse" /><span><strong>本地演示模式</strong><small>Agent 执行为模拟数据</small></span></div>
+          <div className="demo-note"><span className="demo-pulse" /><span><strong>本地 Agent 工作台</strong><small>真实工作流与演示任务并存</small></span></div>
           <button className="profile-row">
             <span className="profile-avatar">林</span>
             <span className="profile-copy"><strong>林同学</strong><small>管理员</small></span>
@@ -312,7 +450,7 @@ function App() {
             <div className="breadcrumbs"><span>栖光工作室</span><ChevronRight size={14} /><strong>{pageLabel(page)}</strong></div>
           </div>
           <div className="topbar-actions">
-            <div className="demo-chip"><span className="demo-pulse" />演示环境</div>
+            <div className="demo-chip"><span className="demo-pulse" />本地运行</div>
             <button className="search-trigger" onClick={() => document.getElementById('global-search')?.focus()}><Search size={15} /><span>搜索任务</span><kbd><Command size={11} /> K</kbd></button>
             <button className="icon-button notification-button" aria-label="查看待审批" onClick={() => { setPage('tasks'); setFilter('review') }}>
               <Bell size={18} />{reviewTasks.length > 0 && <span className="notification-dot" />}
@@ -333,8 +471,8 @@ function App() {
       </main>
 
       {mobileNavOpen && <button className="mobile-scrim" aria-label="关闭导航" onClick={() => setMobileNavOpen(false)} />}
-      {selectedTask && <TaskDrawer task={selectedTask} agents={agents} onClose={() => setSelectedTaskId(null)} onUpdate={updateStage} />}
-      {createOpen && <CreateModal onClose={() => setCreateOpen(false)} onCreate={createTask} />}
+      {selectedTask && <TaskDrawer task={selectedTask} agents={agents} workflow={workflow} busy={workflowBusy} onRetry={retryWorkflowTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateStage} />}
+      {createOpen && <CreateModal busy={workflowBusy} onClose={() => setCreateOpen(false)} onCreate={createTask} />}
       {toast && <div className="toast"><CircleCheck size={17} />{toast}</div>}
     </div>
   )
@@ -464,11 +602,18 @@ function EmptyState({ title, text, onClick }: { title: string; text: string; onC
   return <div className="empty-state"><span><Sparkles size={17} /></span><strong>{title}</strong><small>{text}</small>{onClick && <button className="text-button" onClick={onClick}>创建任务 <ArrowRight size={14} /></button>}</div>
 }
 
-function TaskDrawer({ task, agents, onClose, onUpdate }: { task: Task; agents: AgentProfile[]; onClose: () => void; onUpdate: (task: Task, stage: Stage, message: string, agent?: string) => void }) {
+function TaskDrawer({ task, agents, workflow, busy, onRetry, onClose, onUpdate }: { task: Task; agents: AgentProfile[]; workflow: WorkflowSnapshot | null; busy: boolean; onRetry: (task: WorkflowTask) => void; onClose: () => void; onUpdate: (task: Task, stage: Stage, message: string, agent?: string) => void }) {
   const nextStage = task.stage === 'research' ? 'writing' : task.stage === 'writing' ? 'review' : null
   const executionAgent = /后端|api|数据库|服务/i.test(`${task.title} ${task.kind} ${task.channel}`) ? '后端 Agent' : '前端 Agent'
+  const workflowTask = task.workflowTaskId ? workflow?.tasks.find((item) => item.id === task.workflowTaskId) : undefined
+  const workflowRuns = task.workflowTaskId ? (workflow?.runs.filter((run) => run.taskId === task.workflowTaskId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) ?? []) : []
+  const activeRun = [...workflowRuns].reverse().find((run) => run.status === 'queued' || run.status === 'running') ?? workflowRuns[workflowRuns.length - 1]
+  const workflowRole = activeRun?.phase === 'ceo-plan' ? 'ceo' : activeRun?.phase === 'qa-review' ? 'qa' : task.stage === 'research' ? 'ceo' : task.stage === 'review' || task.stage === 'approved' ? 'qa' : 'specialist'
+  const routedAgent = workflowTask?.agents?.[workflowRole]
   const activeAgent = agents.find((agent) => agent.name === (task.stage === 'research' ? 'CEO Agent' : task.stage === 'review' ? '测试 Agent' : executionAgent)) ?? agents[0]
   const contextSkills = getSkills(activeAgent?.skillIds ?? [])
+  const workflowSkillNames = routedAgent?.skills?.map((skill) => skill.name) ?? []
+  const workflowReview = workflowTask?.reviewId ? workflow?.reviews.find((review) => review.id === workflowTask.reviewId) : undefined
   return <div className="drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <aside className="task-drawer" aria-label="任务详情">
       <div className="drawer-top"><span className="drawer-kicker"><FileText size={15} />任务详情</span><button className="icon-button" aria-label="关闭详情" onClick={onClose}><X size={19} /></button></div>
@@ -476,30 +621,36 @@ function TaskDrawer({ task, agents, onClose, onUpdate }: { task: Task; agents: A
         <div className="drawer-progress"><div><span>任务进度</span><strong>{task.progress}%</strong></div><span className="progress-track"><i style={{ width: `${task.progress}%` }} /></span></div>
         <section className="drawer-section"><div className="drawer-section-title"><h3>任务说明</h3><button className="icon-button subtle-icon" aria-label="更多任务选项"><MoreHorizontal size={17} /></button></div><p>{task.brief}</p></section>
         <section className="drawer-section"><div className="drawer-section-title"><h3>交付概览</h3><span className="source-count"><FileText size={14} />{task.sources} 个附件</span></div><div className="output-preview"><div className="output-preview-icon"><FileText size={17} /></div><span><strong>{task.stage === 'review' || task.stage === 'approved' ? '任务交付物' : task.stage === 'writing' ? '执行产物' : '任务计划'}</strong><small>{task.stage === 'review' ? '已完成 · 等待人工验收' : task.stage === 'approved' ? '已通过验收并交付' : `当前阶段 · ${stageMeta[task.stage].label}`}</small></span><ArrowUpRight size={15} /></div></section>
-        <section className="drawer-section context-section"><div className="drawer-section-title"><h3>本次执行上下文</h3><span className="context-agent-label"><Cpu size={13} />{activeAgent?.name}</span></div><p className="context-note">只选择当前岗位绑定的 Skills，后续执行器会据此组装提示词和工具权限。</p><div className="context-skill-list">{contextSkills.map((skill) => <span className={`skill-chip ${skill.tone}`} key={skill.id}>{skill.name}</span>)}</div><div className="context-route"><span>模型路由</span><strong>{activeAgent?.provider} / {activeAgent?.model}</strong></div></section>
+        <section className="drawer-section context-section"><div className="drawer-section-title"><h3>本次执行上下文</h3><span className="context-agent-label"><Cpu size={13} />{routedAgent?.name ?? activeAgent?.name}</span></div><p className="context-note">当前岗位的 Skills 会注入对应 Agent；文件与命令权限由项目授权范围单独控制。</p><div className="context-skill-list">{workflowTask ? workflowSkillNames.map((skill) => <span className="skill-chip" key={skill}>{skill}</span>) : contextSkills.map((skill) => <span className={`skill-chip ${skill.tone}`} key={skill.id}>{skill.name}</span>)}</div><div className="context-route"><span>模型路由</span><strong>{routedAgent ? `${routedAgent.provider} / ${routedAgent.model}` : `${activeAgent?.provider} / ${activeAgent?.model}`}</strong></div></section>
+         {workflowTask && <section className="drawer-section workflow-evidence"><div className="drawer-section-title"><h3>真实工作流证据</h3><span className="context-agent-label"><Radio size={13} />{workflowTask.status}</span></div><div className="workflow-evidence-grid"><div><span>项目目录</span><strong>{task.projectPath}</strong></div><div><span>运行阶段</span><strong>{workflowRuns.map((run) => run.phase).join(' → ') || '排队中'}</strong></div></div>{workflowTask.plan && <div className="workflow-result-block"><span>CEO 计划</span><pre>{JSON.stringify(workflowTask.plan, null, 2)}</pre></div>}{workflowTask.execution && <div className="workflow-result-block"><span>执行结果</span><pre>{JSON.stringify(workflowTask.execution, null, 2)}</pre></div>}{workflowReview && <div className={`workflow-review ${workflowReview.status === 'passed' ? 'review-pass' : 'review-fail'}`}><strong>测试 Agent：{workflowReview.status === 'passed' ? '独立验收通过' : '需要整改'}</strong><span>{workflowReview.summary}</span></div>}</section>}
         <section className="drawer-section drawer-timeline"><h3>任务进展</h3>{stageOrder.map((stage, index) => { const reached = stageOrder.indexOf(task.stage) >= index; return <div className={`timeline-row ${reached ? 'timeline-reached' : ''}`} key={stage}><span className="timeline-node">{reached ? <Check size={11} /> : <span />}</span><span><strong>{stageMeta[stage].label}</strong><small>{stage === task.stage ? task.updated : reached ? '已完成' : '待开始'}</small></span>{index < 3 && <i className={reached ? 'timeline-line reached-line' : 'timeline-line'} />}</div>})}</section>
       </div>
       <div className="drawer-actions">
-        {task.stage === 'review' ? <><button className="button-secondary" onClick={() => onUpdate(task, 'writing', '验收未通过，任务退回执行岗位', task.owner)}><ArrowDownRight size={16} />退回修改</button><button className="button-approve" onClick={() => onUpdate(task, 'approved', '交付物通过人工验收', '林同学')}><Check size={17} />通过验收</button></> : task.stage === 'approved' ? <div className="completed-banner"><CircleCheck size={17} />已通过人工验收</div> : <button className="button-primary drawer-advance" onClick={() => nextStage && onUpdate(task, nextStage, nextStage === 'review' ? '执行完成，交给测试 Agent 验收' : `CEO 拆解完成，派发给 ${executionAgent}`, nextStage === 'review' ? '测试 Agent' : executionAgent)}><Sparkles size={16} />模拟推进到{nextStage ? stageMeta[nextStage].label : ''}<ArrowRight size={15} /></button>}
-        <small className="drawer-demo-note">模拟推进只更新本地任务，不会触发真实模型调用</small>
+        {workflowTask ? workflowTask.status === 'approved' ? <div className="completed-banner"><CircleCheck size={17} />测试 Agent 独立验收通过</div> : ['failed', 'needs-fix'].includes(workflowTask.status) ? <div className="workflow-status-note is-error"><strong>{workflowTask.status === 'failed' ? '工作流失败' : '验收需要整改'}</strong><span>{workflowRuns.find((run) => run.status === 'failed')?.error ?? workflowReview?.summary ?? '请查看上方运行证据与验收记录。'}</span><button className="button-primary drawer-advance" type="button" disabled={busy} onClick={() => onRetry(workflowTask)}><Sparkles size={16} />{busy ? '重新排队中…' : '重试失败阶段'}<ArrowRight size={15} /></button></div> : <div className="workflow-status-note"><span className="demo-pulse" /><span>本地后台队列正在运行 Agent；此任务不能用演示按钮改写状态。</span></div> : task.stage === 'review' ? <><button className="button-secondary" onClick={() => onUpdate(task, 'writing', '验收未通过，任务退回执行岗位', task.owner)}><ArrowDownRight size={16} />退回修改</button><button className="button-approve" onClick={() => onUpdate(task, 'approved', '交付物通过人工验收', '林同学')}><Check size={17} />通过验收</button></> : task.stage === 'approved' ? <div className="completed-banner"><CircleCheck size={17} />已通过人工验收</div> : <button className="button-primary drawer-advance" onClick={() => nextStage && onUpdate(task, nextStage, nextStage === 'review' ? '执行完成，交给测试 Agent 验收' : `CEO 拆解完成，派发给 ${executionAgent}`, nextStage === 'review' ? '测试 Agent' : executionAgent)}><Sparkles size={16} />模拟推进到{nextStage ? stageMeta[nextStage].label : ''}<ArrowRight size={15} /></button>}
+         <small className="drawer-demo-note">{task.workflowTaskId ? '状态来自本地队列、模型调用与项目授权执行记录' : '演示推进只更新本地界面，不会触发真实模型调用'}</small>
       </div>
     </aside>
   </div>
 }
 
-function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string, brief: string, channel: string) => void }) {
+function CreateModal({ busy, onClose, onCreate }: { busy: boolean; onClose: () => void; onCreate: (title: string, brief: string, channel: string, projectPath: string, accessMode: ProjectAccessMode, allowedCommands: string[]) => void }) {
   const [title, setTitle] = useState('')
   const [brief, setBrief] = useState('')
   const [channel, setChannel] = useState('全栈开发')
+  const [projectPath, setProjectPath] = useState('E:\\codexs')
+  const [accessMode, setAccessMode] = useState<ProjectAccessMode>('read-only')
+  const [allowedCommands, setAllowedCommands] = useState('pnpm lint\npnpm build')
   const canSubmit = title.trim().length > 0
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><form className="create-modal" onSubmit={(event) => { event.preventDefault(); if (canSubmit) onCreate(title.trim(), brief.trim(), channel) }}>
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><form className="create-modal" onSubmit={(event) => { event.preventDefault(); if (canSubmit) onCreate(title.trim(), brief.trim(), channel, projectPath.trim(), accessMode, allowedCommands.split(/\r?\n/).map((command) => command.trim()).filter(Boolean)) }}>
     <div className="modal-heading"><div><span className="modal-icon"><Plus size={18} /></span><span><small>NEW WORKFLOW</small><h2>派发新任务</h2></span></div><button className="icon-button" type="button" aria-label="关闭创建任务" onClick={onClose}><X size={19} /></button></div>
     <p className="modal-intro">先写清楚目标与交付标准，CEO Agent 会拆解并派发给对应岗位。</p>
     <label className="form-label">任务目标 <span>必填</span><input autoFocus maxLength={80} placeholder="例如：给后台新增用户权限管理页面和 API" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
     <label className="form-label">验收标准与背景 <span>选填</span><textarea rows={4} maxLength={500} placeholder="说明技术栈、边界条件、需要交付的文件或验收方式……" value={brief} onChange={(event) => setBrief(event.target.value)} /></label>
     <label className="form-label">任务方向<select value={channel} onChange={(event) => setChannel(event.target.value)}><option>全栈开发</option><option>前端开发</option><option>后端开发</option><option>Agent 研究</option><option>内容与运营</option></select></label>
+    <div className="form-grid"><label className="form-label">授权项目目录<input value={projectPath} onChange={(event) => setProjectPath(event.target.value)} placeholder="例如：E:\\codexs" /></label><label className="form-label">访问范围<select value={accessMode} onChange={(event) => setAccessMode(event.target.value as ProjectAccessMode)}><option value="read-only">只读分析</option><option value="write">允许写文件</option><option value="execute">允许写文件并执行白名单命令</option></select></label></div>
+    <label className="form-label">允许执行的命令 <span>每行一条，仅 execute 模式生效</span><textarea rows={2} value={allowedCommands} onChange={(event) => setAllowedCommands(event.target.value)} placeholder="pnpm lint&#10;pnpm test" /></label>
     <div className="modal-flow-note"><span className="demo-pulse" /><span>首先交给 <strong>CEO Agent</strong> 拆解任务</span><span className="flow-note-arrow"><ArrowRight size={14} /> 专业岗位执行 <ArrowRight size={14} /> 你验收</span></div>
-    <div className="modal-actions"><button className="button-secondary" type="button" onClick={onClose}>取消</button><button className="button-primary" type="submit" disabled={!canSubmit}><Send size={15} />派发任务</button></div>
+    <div className="modal-actions"><button className="button-secondary" type="button" onClick={onClose} disabled={busy}>取消</button><button className="button-primary" type="submit" disabled={!canSubmit || busy}><Send size={15} />{busy ? '启动中…' : '派发任务'}</button></div>
   </form></div>
 }
 
