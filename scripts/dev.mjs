@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
+if (process.env.ZHIDIAN_HTTPS_ORIGIN !== undefined) throw new Error('Use pnpm build and pnpm api for HTTPS mode, not the Vite development server.')
 const api = spawn(process.execPath, ['server.mjs'], { cwd: root, stdio: 'inherit', env: process.env, windowsHide: true })
 const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1'], { cwd: root, stdio: 'inherit', env: process.env, windowsHide: true })
 let stopping = false

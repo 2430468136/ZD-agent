@@ -1,0 +1,67 @@
+.harness-workspace { color:#223734; }
+.harness-workspace-header { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:18px; }
+.harness-workspace-header h1 { margin:7px 0 0; font-size:27px; line-height:1.2; letter-spacing:0; }
+.harness-layout-control { display:flex; flex:none; padding:3px; border:1px solid #d9e2df; border-radius:7px; background:#eff3f1; gap:2px; }
+.harness-layout-control button,.harness-icon-button { display:grid; place-items:center; flex:none; width:33px; height:32px; border:1px solid transparent; border-radius:5px; background:transparent; color:#566a64; cursor:pointer; }
+.harness-layout-control button[aria-pressed=true] { border-color:#dce5e1; background:#fff; color:#1d6653; }
+.harness-layout-control button:hover,.harness-icon-button:hover { background:#e4eeea; color:#1d6653; }
+.harness-workspace-toolbar { display:grid; grid-template-columns:minmax(120px,210px) minmax(0,1fr) auto; gap:12px; align-items:end; padding:13px 0; border-block:1px solid #dce5e2; }
+.harness-workspace-toolbar label { display:grid; gap:5px; min-width:0; color:#526761; font-size:12px; }
+.harness-workspace-toolbar select { width:100%; min-width:0; height:35px; padding:4px 9px; border:1px solid #d9e3e0; border-radius:6px; background:#fff; color:#223734; font:inherit; font-size:13px; }
+.harness-workspace-count { align-self:end; padding:8px 0; color:#596c65; font-size:12px; white-space:nowrap; }
+.harness-focus-row { display:flex; flex-wrap:wrap; gap:6px; min-height:45px; padding:8px 0; }
+.harness-focus-row button { display:flex; align-items:center; gap:6px; padding:5px 9px; border:1px solid #dfe8e4; border-radius:5px; background:#fff; color:#526660; font:inherit; font-size:12px; cursor:pointer; }
+.harness-focus-row button[aria-pressed=true] { border-color:#9cc4b6; background:#e7f2ec; color:#195a47; }
+.harness-pane-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:stretch; }
+.harness-pane-grid.is-single,.harness-pane-grid.mode-focus { grid-template-columns:minmax(0,1fr); }
+.harness-pane-grid.mode-focus .harness-pane:not(.is-focused) { display:none; }
+.harness-workspace-empty { display:grid; justify-items:center; align-content:center; gap:12px; min-height:235px; color:#6c8079; font-size:14px; }
+.harness-pane { display:flex; flex-direction:column; min-width:0; overflow:hidden; border:1px solid #d5e1db; border-radius:8px; background:#fff; }
+.harness-pane.is-focused { border-color:#8bb8aa; }
+.harness-pane-header { display:flex; align-items:center; gap:9px; min-height:57px; padding:8px 11px; border-bottom:1px solid #e4ece8; background:#f6f9f7; }
+.harness-pane-mark { display:grid; place-items:center; width:30px; height:30px; flex:none; border-radius:6px; color:#2c7161; background:#e3eee9; }
+.harness-pane-heading { flex:1; min-width:0; }
+.harness-pane-heading h2 { margin:0; font-size:14px; line-height:1.25; overflow-wrap:anywhere; }
+.harness-pane-heading small { display:block; margin-top:3px; color:#5b7169; font-size:11px; overflow-wrap:anywhere; }
+.harness-run-state { display:flex; align-items:center; gap:4px; flex:none; font-size:11px; color:#526561; }
+.harness-run-state i { width:6px; height:6px; background:currentColor; border-radius:50%; }
+.harness-run-state.state-running,.harness-run-state.state-completed { color:#237559; }
+.harness-run-state.state-queued { color:#8a611a; }
+.harness-run-state.state-failed { color:#a54038; }
+.harness-pane-body { display:grid; align-content:start; gap:11px; padding:11px; flex:1; min-width:0; }
+.harness-pane-task { font-size:13px; font-weight:700; overflow-wrap:anywhere; }
+.harness-run-meta { display:grid; gap:4px; margin:0; font-size:11px; }
+.harness-run-meta div { display:grid; grid-template-columns:52px minmax(0,1fr); gap:8px; }
+.harness-run-meta dt { color:#596f66; }
+.harness-run-meta dd { margin:0; overflow-wrap:anywhere; }
+.harness-run-meta code { font-size:11px; }
+.harness-pane-events,.harness-pane-results { min-width:0; border-top:1px solid #e7edea; padding-top:8px; }
+.harness-pane h3 { display:flex; align-items:center; gap:6px; margin:0 0 7px; font-size:12px; }
+.harness-pane-events ol { max-height:209px; overflow:auto; margin:0; padding:0; list-style:none; font-size:12px; }
+.harness-pane-events li { display:grid; grid-template-columns:68px minmax(0,1fr) auto; align-items:start; gap:7px; padding:5px 0; border-bottom:1px solid #f0f3f1; overflow-wrap:anywhere; }
+.harness-pane-events li time,.harness-pane-events li small { color:#5e746b; font-size:10px; }
+.harness-pane-events p,.harness-pane-results p,.harness-pane-results li { margin:0; font-size:12px; overflow-wrap:anywhere; }
+.harness-pane-results ul { display:grid; gap:5px; margin:5px 0 0; padding-left:15px; }
+.harness-pane-results li small { display:block; margin-top:2px; color:#5e746b; }
+.harness-pane details { min-width:0; border:1px solid #e2ebe6; border-radius:5px; overflow:hidden; }
+.harness-pane-commands { display:grid; gap:5px; }
+.harness-pane summary { padding:7px 8px; color:#3d6155; background:#f3f7f5; cursor:pointer; font-size:12px; overflow-wrap:anywhere; }
+.harness-pane pre { max-height:230px; overflow:auto; margin:0; padding:8px; color:#203b36; background:#f8faf9; font:11px/1.5 Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+.harness-pane-error,.harness-pane-offline,.harness-action-notice { margin:0; padding:6px 8px; border-radius:5px; font-size:12px; overflow-wrap:anywhere; }
+.harness-pane-error { color:#993832; background:#fff2f0; }
+.harness-pane-offline { color:#72511c; background:#fff7e8; }
+.harness-action-notice { margin:0 10px 7px; background:#eef5f2; }
+.harness-pane-actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 10px; border-top:1px solid #e4ece8; }
+.harness-pane-actions button:not(.harness-icon-button) { display:flex; align-items:center; gap:5px; min-height:31px; border:1px solid #dfe8e3; border-radius:5px; padding:4px 8px; background:#fff; color:#335b4e; font:inherit; font-size:11px; cursor:pointer; }
+.harness-pane-actions button:not(.harness-icon-button):hover { background:#edf5f1; }
+.harness-pane-actions button:disabled { opacity:.55; cursor:wait; }
+.harness-pane-actions .harness-icon-button { margin-left:auto; }
+@media (max-width:850px) {
+  .harness-pane-grid { grid-template-columns:minmax(0,1fr); }
+  .harness-pane:not(.is-focused) { display:none; }
+}
+@media (max-width:520px) {
+  .harness-workspace-header h1 { font-size:22px; }
+  .harness-workspace-toolbar { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:7px; }
+  .harness-workspace-count { grid-column:1/-1; padding:0; }
+}

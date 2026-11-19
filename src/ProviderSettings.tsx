@@ -128,6 +128,6 @@ export default function ProviderSettings({ agents, onNavigate }: { agents: Agent
       </div>
     </section>
     <section className="settings-status-row"><div><h2>团队路由</h2><p>在 Agent 团队页分别选择服务商与 Model ID。凭据按服务商共享，岗位路由彼此独立。</p></div><button className="text-button" onClick={() => onNavigate('team')}>打开 Agent 团队 <ArrowRight size={14} /></button></section>
-    <div className="data-footnote"><Activity size={14} />连接测试已接通服务商；任务派发与执行目前仍为本地模拟，不会自动运行 Agent。</div>
+    <div className="data-footnote"><Activity size={14} />连接测试不创建任务，也不验证完整工作流。</div>
   </>
 }

@@ -26,5 +26,9 @@ jobs:
         run: pnpm lint
       - name: Build
         run: pnpm build
+      - name: Unit tests
+        run: pnpm test
       - name: End-to-end workflow
         run: pnpm test:e2e
+      - name: HTTPS workbench pilot
+        run: pnpm test:https

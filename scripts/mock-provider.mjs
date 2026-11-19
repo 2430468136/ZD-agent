@@ -3,10 +3,16 @@ import { createServer } from 'node:http'
 const port = Number(process.env.MOCK_PROVIDER_PORT ?? 8790)
 const specialistAttempts = new Map()
 let externalSentinelLeaked = false
+const observedPrompts = []
 const server = createServer(async (request, response) => {
   if (request.method === 'GET' && request.url === '/__test/leak-check') {
     response.writeHead(200, { 'content-type': 'application/json' })
     response.end(JSON.stringify({ externalSentinelLeaked }))
+    return
+  }
+  if (request.method === 'GET' && request.url === '/__test/prompts') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ prompts: observedPrompts }))
     return
   }
   if (request.url !== '/v1/chat/completions') {
@@ -20,9 +26,31 @@ const server = createServer(async (request, response) => {
   const payload = JSON.parse(body)
   const system = payload.messages?.find((item) => item.role === 'system')?.content ?? ''
   const prompt = payload.messages?.find((item) => item.role === 'user')?.content ?? ''
+  observedPrompts.push({ system, prompt })
   if (prompt.includes('OUTSIDE_PROJECT_SENTINEL_6f98c1')) externalSentinelLeaked = true
   const title = prompt.match(/任务：([^\n]+)/)?.[1] ?? ''
-  const roleSkill = system.includes('CEO Agent') ? 'CEO Agent skill' : system.includes('专业执行 Agent') ? '专业 Agent skill' : '测试 Agent skill'
+  const currentRole = prompt.match(/岗位：([^\n]+)/)?.[1] ?? ''
+  const isBrowserDispatch = title.startsWith('scheduler timeout fixture dashboard dispatch ')
+  const roleSkill = system.includes('CEO Agent')
+    ? (isBrowserDispatch ? '任务拆解与路由' : 'CEO Agent skill')
+    : system.includes('专业执行 Agent')
+      ? (isBrowserDispatch ? 'React + TypeScript' : `${currentRole} skill`)
+      : (isBrowserDispatch ? '单元与回归测试' : '测试 Agent skill')
+  if (system.includes('CEO Agent') && title.includes('scheduler timeout fixture')) {
+    await new Promise((resolveDelay) => {
+      const timer = setTimeout(resolveDelay, 5_000)
+      response.once('close', () => { clearTimeout(timer); resolveDelay() })
+    })
+    if (response.destroyed) return
+  }
+  const splitDelay = title.endsWith('harness-split-A') ? 2200 : title.endsWith('harness-split-B') ? 15_000 : 0
+  if (system.includes('专业执行 Agent') && (title.includes('cancel specialist fixture') || splitDelay)) {
+    await new Promise((resolveDelay) => {
+      const timer = setTimeout(resolveDelay, splitDelay || 5_000)
+      response.once('close', () => { clearTimeout(timer); resolveDelay() })
+    })
+    if (response.destroyed) return
+  }
   if (!prompt.includes(roleSkill)) {
     response.writeHead(400, { 'content-type': 'application/json' })
     response.end(JSON.stringify({ error: { message: `Missing role-specific skill context: ${roleSkill}` } }))
@@ -40,7 +68,13 @@ const server = createServer(async (request, response) => {
   } else if (system.includes('专业执行 Agent')) {
     const attempt = (specialistAttempts.get(title) ?? 0) + 1
     specialistAttempts.set(title, attempt)
-    if (title.includes('retry workflow') && attempt === 1) {
+    if (title.includes('read-only file proposal fixture')) {
+      content = JSON.stringify({ summary: 'Unexpected file proposal', files: [{ path: 'agent-output.md', content: 'must not be written' }], commands: [] })
+    } else if (title.includes('read-only command proposal fixture')) {
+      content = JSON.stringify({ summary: 'Unexpected command proposal', files: [], commands: ['node --version'] })
+    } else if (system.includes('当前为只读分析')) {
+      content = JSON.stringify({ summary: 'mock read-only analysis', files: [], commands: [], acceptanceNotes: splitDelay ? [`output-${title.slice(-15)}`] : prompt.includes('READONLY_ANALYSIS_FIXTURE') ? ['READONLY_ANALYSIS_FIXTURE'] : [] })
+    } else if (title.includes('retry workflow') && attempt === 1) {
       content = JSON.stringify({ summary: 'first retry fixture fails intentionally', files: [{ path: '../retry-escape.txt', content: 'outside project' }], commands: [], acceptanceNotes: [] })
     } else if (title.includes('path traversal')) {
       content = JSON.stringify({ summary: 'path traversal fixture', files: [
@@ -61,6 +95,8 @@ const server = createServer(async (request, response) => {
         acceptanceNotes: ['check output'],
       })
     }
+  } else if (prompt.includes('"summary":"mock read-only analysis"')) {
+    content = JSON.stringify({ status: 'passed', summary: 'mock read-only review', checks: [{ name: 'analysis has snapshot evidence', passed: true, evidence: 'Snapshot and specialist analysis available without executing commands.' }], followups: [] })
   } else {
     content = JSON.stringify({
       status: 'passed',

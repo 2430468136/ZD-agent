@@ -1,0 +1,49 @@
+.schedule-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.schedule-page h1, .schedule-page h2 { margin: 0; }
+.schedule-page h1 { display: flex; align-items: center; gap: 9px; font-size: 23px; }
+.schedule-page h2 { font-size: 16px; }
+.schedule-page-heading, .schedule-form-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.schedule-page-heading .button-primary { display: inline-flex; align-items: center; gap: 6px; }
+.schedule-table-wrap { overflow: auto; border-block: 1px solid #dfe5ec; background: #fff; }
+.schedule-table { width: 100%; min-width: 580px; border-collapse: collapse; text-align: left; font-size: 13px; }
+.schedule-table th, .schedule-table td { padding: 12px; border-bottom: 1px solid #e9edf2; vertical-align: middle; overflow-wrap: anywhere; }
+.schedule-table th { background: #f6f8fb; white-space: nowrap; color: #465270; }
+.schedule-table tr:last-child td { border-bottom: 0; }
+.schedule-table td small { display: block; margin-top: 5px; max-width: 400px; color: #596477; }
+.schedule-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.schedule-actions .icon-button { flex: 0 0 32px; width: 32px; height: 32px; }
+.schedule-editor { display: grid; gap: 12px; padding-block: 14px; border-block: 1px solid #dfe5ec; }
+.schedule-editor label { display: grid; align-content: start; gap: 5px; font-size: 13px; }
+.schedule-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+.schedule-editor input:not([type=checkbox]), .schedule-editor select, .schedule-editor textarea { min-width: 0; width: 100%; border: 1px solid #cfd6e2; border-radius: 6px; padding: 8px; font: inherit; background: #fff; color: #1e293b; }
+.schedule-days { display: flex; flex-wrap: wrap; gap: 12px; border: 1px solid #dfe5ec; }
+.schedule-days label, .schedule-form-footer label { display: flex; align-items: center; gap: 5px; }
+.schedule-error { color: #a32b2c; margin: 0; }
+.member-task-status { border-block: 1px solid #dfe5ec; padding: 6px 0 12px; }
+.member-task-status dl { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 0; font-size: 13px; }
+.member-task-status dl div { display: grid; gap: 3px; min-width: 0; }
+.member-task-status dt { color: #596477; }
+.member-task-status dd { margin: 0; overflow-wrap: anywhere; }
+.member-history-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.member-history-toolbar label { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; font-size: 13px; }
+.member-history-toolbar select { min-width: 0; padding: 6px; background: #fff; border: 1px solid #dfe5ec; border-radius: 5px; }
+.member-history-views { display: flex; max-width: 100%; flex-wrap: wrap; border-bottom: 1px solid #dfe5ec; }
+.member-history-views button { border: 0; border-bottom: 2px solid transparent; padding: 7px 9px; background: transparent; font-size: 13px; cursor: pointer; }
+.member-history-views button[aria-pressed="true"] { border-bottom-color: #2d6654; color: #193a32; font-weight: 700; }
+.member-history-views button:hover { background: #ebf0ec; }
+.member-history-section { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.member-history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 12px; }
+.member-history-pagination button:disabled { opacity: .45; cursor: default; }
+.delivery-alerts { border-block: 1px solid #ead4ce; }
+.delivery-alerts h2 { display: flex; align-items: center; gap: 7px; color: #883c2c; padding: 9px 0; }
+.delivery-alerts ul { list-style: none; padding: 0; margin: 0; }
+.delivery-alerts li { border-top: 1px solid #ead4ce; }
+.delivery-alerts button { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; width: 100%; text-align: start; font: inherit; font-size: 13px; border: 0; background: transparent; color: #843e2f; padding: 9px; cursor: pointer; }
+.delivery-alerts button:hover, .delivery-alerts button[aria-pressed="true"] { background: #fff1e9; }
+.delivery-alerts button strong { flex: 1 1 130px; overflow-wrap: anywhere; }
+.delivery-alerts button span { white-space: nowrap; }
+.delivery-history-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.delivery-history-heading small { font-size: 12px; font-weight: 400; color: #596477; }
+.delivery-history-heading label { display: flex; gap: 5px; align-items: center; font-size: 13px; }
+.inbound-source { width: min(260px, 100%); min-width: 150px; border: 0; padding: 0; }
+.inbound-task-link { display: inline-flex; align-items: center; gap: 5px; }

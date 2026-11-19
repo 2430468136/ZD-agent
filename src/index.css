@@ -7,3 +7,9 @@ button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid rgba(91,148,121,.3); outline-offset: 2px; }
 ::selection { color: #193a32; background: #d8ef84; }
 #root { min-height: 100vh; }
+.local-login { display: grid; min-height: 100dvh; place-items: center; padding: 20px; }
+.local-login section { width: min(100%, 340px); }
+.local-login h1 { margin: 0 0 18px; font-size: 23px; }
+.local-login form, .local-login label { display: grid; gap: 10px; }
+.local-login input { width: 100%; border: 1px solid #cfd6e2; border-radius: 6px; padding: 9px; font: inherit; }
+.local-login p[role=alert] { color: #a32b2c; }

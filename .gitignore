@@ -37,3 +37,6 @@ coverage
 
 # Local end-to-end test fixtures
 .e2e-*/
+
+# Local Windows desktop build artifacts
+release/desktop/

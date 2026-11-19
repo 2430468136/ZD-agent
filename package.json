@@ -9,7 +9,13 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:e2e": "node scripts/e2e-workflow.mjs"
+    "test:e2e": "node scripts/e2e-workflow.mjs",
+    "test:https": "node scripts/e2e-https.mjs",
+    "bench:pilot": "node scripts/benchmark-pilot.mjs",
+    "test": "node --test server/*.test.mjs",
+    "desktop:dev": "pnpm build && electron .",
+    "desktop:dir": "pnpm build && electron-builder --dir --win",
+    "desktop:installer": "pnpm build && electron-builder --win nsis"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",
@@ -21,8 +27,46 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.zhidian.desktop",
+    "productName": "织点",
+    "artifactName": "Zhidian-Setup-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release/desktop"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "server.mjs",
+      "server/**",
+      "package.json",
+      "!server/**/*.test.mjs",
+      "!**/*.log"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
